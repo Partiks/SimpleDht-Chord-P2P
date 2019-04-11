@@ -5,20 +5,24 @@ import android.os.Bundle;
 import android.app.Activity;
 import android.telephony.TelephonyManager;
 import android.text.method.ScrollingMovementMethod;
+import android.util.Log;
 import android.view.Menu;
 import android.widget.TextView;
 
 public class SimpleDhtActivity extends Activity {
 
-    String portStr="";
-    String myPort="";
+    static String portStr="";
+    static String myPort="";
+    static String P_TAG="PartiksTag";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+        Log.e(P_TAG, "Grader created SimpleDhtActivity");
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_simple_dht_main);
 
         //partiks setup
+
 
         TelephonyManager tel = (TelephonyManager) this.getSystemService(Context.TELEPHONY_SERVICE);
         portStr = tel.getLine1Number().substring(tel.getLine1Number().length() - 4);
@@ -28,10 +32,12 @@ public class SimpleDhtActivity extends Activity {
         tv.setMovementMethod(new ScrollingMovementMethod());
         findViewById(R.id.button3).setOnClickListener(
                 new OnTestClickListener(tv, getContentResolver(), myPort));
+
         //partiks end setup
 
 
     }
+
 
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
