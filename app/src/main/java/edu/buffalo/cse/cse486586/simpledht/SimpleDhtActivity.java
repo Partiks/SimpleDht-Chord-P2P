@@ -33,6 +33,8 @@ public class SimpleDhtActivity extends Activity {
         findViewById(R.id.button3).setOnClickListener(
                 new OnTestClickListener(tv, getContentResolver(), myPort));
 
+        //findViewById(R.id.button1).setOnClickListener( new SimpleDhtProvider().query());
+
         //partiks end setup
 
 

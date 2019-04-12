@@ -7,6 +7,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.PrintWriter;
+import java.net.ConnectException;
 import java.net.InetAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
@@ -49,6 +50,7 @@ public class SimpleDhtProvider extends ContentProvider {
     String myPort="";
     static final int SERVER_PORT = 10000;
     String node_id;
+    static int recently_changed=0;
 
     public static void setRemotePorts(ArrayList<String> remotePorts) {
         SimpleDhtProvider.remotePorts = remotePorts;
@@ -81,7 +83,7 @@ public class SimpleDhtProvider extends ContentProvider {
         TelephonyManager tel = (TelephonyManager) getContext().getSystemService(Context.TELEPHONY_SERVICE);
         portStr = tel.getLine1Number().substring(tel.getLine1Number().length() - 4);
         myPort = String.valueOf((Integer.parseInt(portStr) * 2));
-        remotePorts.add("11108");
+        remotePorts.add(myPort);
 
         try {
             hashed_nodes.add(genHash("5554"));
@@ -139,11 +141,14 @@ public class SimpleDhtProvider extends ContentProvider {
         // https://stackoverflow.com/questions/10576930/trying-to-check-if-a-file-exists-in-internal-storage
         // https://stackoverflow.com/questions/3554722/how-to-delete-internal-storage-file-in-android
 
-        if(myPort.equals("11108") && values.getAsString("node") == null ){
-            Log.e(P_TAG, "values.getAs = " + values.getAsString("node") );
-            String msgToSend = "navo_msg" +","+ values.getAsString("key") + ","+ values.getAsString("value");
-            new ClientTask().executeOnExecutor(AsyncTask.SERIAL_EXECUTOR, msgToSend);
-            return uri;
+        if(portStr.equals("5554")){
+            //Log.e(P_TAG,"WHAT ??? PORTSTR = "+portStr);
+            if( (myPort.equals("11108") && values.getAsString("node") == null)){
+                Log.e(P_TAG, "values.getAs = " + values.getAsString("node") );
+                String msgToSend = "navo_msg" +","+ values.getAsString("key") + ","+ values.getAsString("value");
+                new ClientTask().executeOnExecutor(AsyncTask.SERIAL_EXECUTOR, msgToSend);
+                return uri;
+            }
         }
 
         if(myPort.equals("11108")){
@@ -248,7 +253,6 @@ public class SimpleDhtProvider extends ContentProvider {
                             break;
                         }else{
                             //not writing to log atm
-
                         }
                     }
                     Log.e(P_TAG, "FINAL CLIENT @ VALUE: " + m + " as.toString: " + m.toString());
@@ -272,18 +276,28 @@ public class SimpleDhtProvider extends ContentProvider {
                     return m;
 
                 }else if(selection.equals("@")){
-                    itr = msgs.listIterator();
-                    String[] cols = {"key","value"};
-                    MatrixCursor m = new MatrixCursor(cols, 1);
-                    while(itr.hasNext()){
-                        Message m2 = itr.next();
-                        String[] value = {m2.getKey(), m2.getMessage()};
-                        m.addRow(value);
+                        //Log.e(P_TAG, "CLIENT "+query_string[0]+ " - " +query_string[1]+ " CALLED @ QUERY PARAMETER");
+                        itr = msgs.listIterator();
+                        String[] cols = {"key","value"};
+                        MatrixCursor m = new MatrixCursor(cols, 1);
+                        while(itr.hasNext()){
+                            Message m2 = itr.next();
+                            //Log.e(P_TAG, "m2 Key = " + m2.getKey() + " m2 msg = " + m2.getMessage() + "m2 assigned node = " + m2.getAssignedNode());
+                            if(m2.getAssignedNode().equals("5554")){
+                                Log.e(P_TAG, "@@ 1 - MSG KEY: " + m2.getKey() + " Message: " + m2.getMessage() + " found for node: " + query_string[0]);
+                                String[] value = {m2.getKey(), m2.getMessage()};
+                                m.addRow(value);
+                            }else{
+                                //not writing to log atm
+
+                            }
+                        }
+                        return m;
                     }
                     //Log.e(P_TAG, "SERVER's OWN MATRIX CURSOR: " + m.getString(m.getColumnIndex("key")) + " - " + m.getString(m.getColumnIndex("node")));
-                    return m;
+                    //return m;
 
-                }else{
+                else{
                     //Log.e(P_TAG, "FILE WALA CODE ((((((((((((");
                     itr = msgs.listIterator();
                     String[] cols = {"key","value"};
@@ -306,13 +320,15 @@ public class SimpleDhtProvider extends ContentProvider {
             String msgToSend = "navi_query" +","+ portStr + ","+ selection;
             Log.e(P_TAG, "CLIENT SIDE QUERY CALLED WITH SELECTION = " + selection + " --------------------------");
 
-            AsyncTask<String, Void, MatrixCursor> as = new ClientTask().executeOnExecutor(AsyncTask.SERIAL_EXECUTOR, msgToSend);
+            AsyncTask<String, String, MatrixCursor> as = new ClientTask().executeOnExecutor(AsyncTask.SERIAL_EXECUTOR, msgToSend);
             Log.e(P_TAG, "AFTER CLIENT TASK RETURNED, ELSE PART IN QUERY OF OTHER NODES. Current node = " + portStr);
             try {
                 mat2 = as.get();
-                int keyIndex = mat2.getColumnIndex(KEY_FIELD);
+                mat2.moveToFirst();
+                Log.e(P_TAG, "FINAL ANSWER COLUMN COUNT = " + mat2.getColumnCount() + " " + mat2.getString(0) );
+                /*int keyIndex = mat2.getColumnIndex(KEY_FIELD);
                 int valueIndex = mat2.getColumnIndex(VALUE_FIELD);
-                Log.e(P_TAG, "FINAL CLIENT @ VALUE: " + mat2.getString(keyIndex) + " "+ mat2.getString(valueIndex) + " " + as.toString());
+                Log.e(P_TAG, "FINAL CLIENT @ VALUE: " + mat2.getString(keyIndex) + " "+ mat2.getString(valueIndex) + " " + as.toString()); */
                 return mat2;
             } catch (InterruptedException e) {
                 e.printStackTrace();
@@ -503,7 +519,7 @@ public class SimpleDhtProvider extends ContentProvider {
                                 itr = msgs.listIterator();
                                 while(itr.hasNext()) {
                                     Message m2 = itr.next();
-                                    response_msg = response_msg + m2.getKey() + "," + m2.getMessage()+".";
+                                    response_msg = response_msg + m2.getKey() + "," + m2.getMessage()+"_";
                                 }
                                 out.println(response_msg);
 
@@ -515,7 +531,7 @@ public class SimpleDhtProvider extends ContentProvider {
                                 while(itr.hasNext()) {
                                     Message m2 = itr.next();
                                     if(m2.getAssignedNode().equals(target_node)){
-                                        response_msg = response_msg + m2.getKey() + "," + m2.getMessage() + ".";
+                                        response_msg = response_msg + m2.getKey() + "," + m2.getMessage() + "_";
                                     }
                                 }
                                 out.println(response_msg);
@@ -527,7 +543,7 @@ public class SimpleDhtProvider extends ContentProvider {
                                 while(itr.hasNext()) {
                                     Message m2 = itr.next();
                                     if(m2.getKey().equals(selection)){
-                                        response_msg = response_msg + m2.getKey() + "," + m2.getMessage() + ".";
+                                        response_msg = response_msg + m2.getKey() + "," + m2.getMessage() + "_";
                                         break;
                                     }
                                 }
@@ -584,7 +600,7 @@ public class SimpleDhtProvider extends ContentProvider {
         }
     }
 
-    private class ClientTask extends AsyncTask<String, Void, MatrixCursor> {
+    private class ClientTask extends AsyncTask<String, String, MatrixCursor> {
         Socket socket;
         PrintWriter out;
         BufferedReader in;
@@ -594,7 +610,7 @@ public class SimpleDhtProvider extends ContentProvider {
         protected MatrixCursor doInBackground(String... msgs2) {
             // reference: http://java.candidjava.com/tutorial/find-the-index-of-the-largest-number-in-an-array.htm
             String[] c_msgs = msgs2[0].split(",");
-            MatrixCursor m =null;
+            MatrixCursor m1 =null;
             Log.e(P_TAG, "Client doinBackgronud: C_MSGS first string: " + c_msgs[0] + " msgs: " + msgs + " msgs types: " + msgs.getClass().getName() + " - " + msgs.getClass().getSimpleName());
             try {
                 socket = new Socket(InetAddress.getByAddress(new byte[]{10, 0, 2, 2}), Integer.parseInt("11108"));
@@ -608,18 +624,23 @@ public class SimpleDhtProvider extends ContentProvider {
                     out.println(node_req);
                     out.println("AAI_GAYU");
                     String temp;
-                    //int baap_alive=0;
+                    int baap_alive=0;
                     while ((temp = in.readLine()) != null) {
-                        //baap_alive=1;
+                        baap_alive=1;
                         connected_sieve[2]=1;
                         if ("SERVER_AAI_GAYU".equals(temp)) {
                             Log.e(P_TAG, "CLIENT SUCCESSFULLY SENT MSG TO 5554 REMOTEPORT SIZE = " + remotePorts.size() + " for sending client side msg " + c_msgs[0]);
                             break;
                         }
                     }
-                    //if(baap_alive == 0){
-                        //myPort="11108";
-                    //}
+                    if(baap_alive == 0) {
+                        myPort="11108";
+                        recently_changed=1;
+                        Log.e(P_TAG, ">>>>>>>>>>>>>>>>>>>> SELF PROCLAIMED SERVER CHANGED <<<<<<<<<<<<<<<<<<<<<<<<<<<");
+                        //String msgReceived="";
+                        //publishProgress(msgReceived);
+                        //Thread.sleep(500);
+                    }
 
 
 
@@ -651,20 +672,31 @@ public class SimpleDhtProvider extends ContentProvider {
                     String query_response="";
                     temp = in.readLine();
                     Log.e(P_TAG, "CLIENT RECEIVED = "+temp);
+                    query_response = temp;
                     while ((temp = in.readLine()) != null) {
                         if ("SERVER_AAI_GAYU".equals(temp)) {
                             Log.e(P_TAG, "CLIENT SUCCESSFULLY SENT MSG TO " + remotePorts.get(i) + " REMOTEPORT SIZE = " + remotePorts.size() + " sending msg " + c_msgs[0] + " loop iteration " + i);
                             break;
                         }else{
-                            query_response = query_response + temp;
+                            //query_response = query_response + temp;
                         }
                     }
+                    //query_response = temp;
                     //got what we needed
-                    String[] str_temp = query_response.split(".");
+                    Log.e(P_TAG, "ORIGINAL TROUBLING STRING: " + query_response);
+                    String[] str_temp = query_response.split("_");
+                    //Log.e(P_TAG, "ORIGINAL TROUBLING LENGTH: " + str_temp.length);
+                    String[] cols = {"key","value"};
+                    MatrixCursor m2 = new MatrixCursor(cols, 1);
                     for(int j=0;j<str_temp.length; j++){
+                        //Log.e(P_TAG, "TROUBLING STRING: " + str_temp[j]);
                         String[] values = str_temp[j].split(",");
-
+                        String[] value = {values[0], values[1]};
+                        Log.e(P_TAG, "CURSOR KEY_VALUE PAIR: "+ value[0] + ", " + value[1]);
+                        m2.addRow(value);
                     }
+                    Thread.sleep(500);
+                    return m2;
 
                 }else{
                     Log.e(P_TAG, "THIS SHOULD NEVER COME! CLIENT TASK LAST ELSE");
@@ -683,13 +715,20 @@ public class SimpleDhtProvider extends ContentProvider {
                 Log.e(P_TAG, "WHY IT COME HERE THOUGH ????");
                 Log.e(P_TAG, "ClientTask socket IOException");
                 myPort="11108";
+                Log.e(P_TAG, ">>>>>>>>>>>>>> EXCEPTION >>>>>> SELF PROCLAIMED SERVER CHANGED <<<<<<<<<<<<<<<<<<<<<<<<<<<");
+                String msgReceived="";
+                //publishProgress(msgReceived);
+                try {
+                    Thread.sleep(500);
+                } catch (InterruptedException e1) {
+                    e1.printStackTrace();
+                }
                 e.printStackTrace();
-            } catch (Exception e) {
-                Log.e(P_TAG, "CATCHED THE MOST GENERIC EXCEPTION");
+            } catch (InterruptedException e) {
                 e.printStackTrace();
             }
 
-            return m;
+            return m1;
         }
 
     }
@@ -708,26 +747,32 @@ public class SimpleDhtProvider extends ContentProvider {
     public int delete(Uri uri, String selection, String[] selectionArgs) {
         Log.e(P_TAG, "Called DELETE from SimpleDhtProvider with key/filename: " + selection);
         String filename = selection;
-        String key_hash = null;
-        try {
-            key_hash = genHash(filename);
-        } catch (NoSuchAlgorithmException e) {
-            e.printStackTrace();
-        }
-        int m_index=-1;
-        for(Message m : msgs){
-            if(m.getKey().equals(filename)){
-                Log.e(P_TAG, "FINDING TO DELTE: " + m.getKey() + " - " + filename);
-                m_index = msgs.indexOf(m);
+        if(selection.equals("*")){
+            msgs.removeAll(msgs);
+        }else if(selection.equals("@")){
+            int m_index=-1;
+            for(Message m: msgs){
+                if(m.getAssignedNode().equals(portStr)){
+                    m_index = msgs.indexOf(m);
+                    msgs.remove(m_index);
+                }
             }
-        }
-        Log.e(P_TAG, "TRYING TO DELETE: "+ m_index + " KEY: " + msgs.get(m_index).getKey());
-        msgs.remove(m_index);
-        String path = getContext().getFilesDir().getAbsolutePath() + "/" + filename;
-        File f = new File(path);
-        if(f.exists()){
-            f.delete();
-            return 0;
+        }else{
+            int m_index=-1;
+            for(Message m : msgs){
+                if(m.getKey().equals(filename)){
+                    Log.e(P_TAG, "FINDING TO DELTE: " + m.getKey() + " - " + filename);
+                    m_index = msgs.indexOf(m);
+                }
+            }
+            Log.e(P_TAG, "TRYING TO DELETE: "+ m_index + " KEY: " + msgs.get(m_index).getKey());
+            msgs.remove(m_index);
+            String path = getContext().getFilesDir().getAbsolutePath() + "/" + filename;
+            File f = new File(path);
+            if(f.exists()){
+                f.delete();
+                return 0;
+            }
         }
         return -1;
     }
