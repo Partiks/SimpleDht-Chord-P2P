@@ -13,7 +13,7 @@ import android.widget.TextView;
 public class OnTestClickListener implements OnClickListener {
 
 	private static final String TAG = OnTestClickListener.class.getName();
-	private static final int TEST_CNT = 50;
+	private static final int TEST_CNT = 2;
 	private static final String KEY_FIELD = "key";
 	private static final String VALUE_FIELD = "value";
 
@@ -26,6 +26,7 @@ public class OnTestClickListener implements OnClickListener {
 
 
 	public OnTestClickListener(TextView _tv, ContentResolver _cr, String port) {
+		Log.e(P_TAG, "ONTESTCLICKLISTENER CONSTRUCTOR CALLED");
 		mTextView = _tv;
 		mContentResolver = _cr;
 		mUri = buildUri("content", "edu.buffalo.cse.cse486586.simpledht.provider");

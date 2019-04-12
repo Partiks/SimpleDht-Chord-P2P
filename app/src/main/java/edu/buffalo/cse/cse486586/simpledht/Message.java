@@ -3,10 +3,12 @@ package edu.buffalo.cse.cse486586.simpledht;
 public class Message {
     String key;
     String message;
+    String assigned_node;
 
-    Message(String k, String msg){
+    Message(String k, String msg, String assigned_node){
         this.key = k;
         this.message = msg;
+        this.assigned_node = assigned_node;
     }
 
     public String getKey() {
@@ -24,6 +26,8 @@ public class Message {
     public void setMessage(String message) {
         this.message = message;
     }
+
+    public String getAssignedNode(){ return assigned_node;  }
 
     public static java.util.Comparator<Message> id = new java.util.Comparator<Message>(){
         public int compare(Message m1, Message m2){
