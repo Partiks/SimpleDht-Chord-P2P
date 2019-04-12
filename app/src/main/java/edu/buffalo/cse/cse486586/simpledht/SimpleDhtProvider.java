@@ -2,12 +2,9 @@ package edu.buffalo.cse.cse486586.simpledht;
 
 import java.io.BufferedReader;
 import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.PrintWriter;
-import java.net.ConnectException;
 import java.net.InetAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
@@ -20,7 +17,6 @@ import java.util.Iterator;
 import java.util.ListIterator;
 import java.util.concurrent.ExecutionException;
 
-import android.app.Activity;
 import android.content.ContentProvider;
 import android.content.ContentValues;
 import android.content.Context;
@@ -37,20 +33,15 @@ public class SimpleDhtProvider extends ContentProvider {
     private static final String KEY_FIELD = "key";
     private static final String VALUE_FIELD = "value";
     private static final String NODE_FIELD = "node";
-    //static String[] orderedRemotePorts = {"5562","5556","5554", "5558", "5560"};
-    static int[] orderedRemotePorts = {5562, 5556, 5554, 5558, 5560};
     static int[] connected_sieve = {0,0,0,0,0};
     static ArrayList<String> remotePorts = new ArrayList<String>();
     static ArrayList<String> hashed_nodes = new ArrayList<String>();
     ArrayList<Message> msgs = new ArrayList<Message>();
-    //static String successor="";
-    //static String predecessor="";
 
     String portStr="";
     String myPort="";
     static final int SERVER_PORT = 10000;
     String node_id;
-    static int recently_changed=0;
 
     public static void setRemotePorts(ArrayList<String> remotePorts) {
         SimpleDhtProvider.remotePorts = remotePorts;
@@ -66,10 +57,6 @@ public class SimpleDhtProvider extends ContentProvider {
 
     public static void setHashed_nodes(ArrayList<String> hashed_nodes) {
         SimpleDhtProvider.hashed_nodes = hashed_nodes;
-    }
-
-    public void sortHashedNodes(){
-
     }
 
 
@@ -162,30 +149,12 @@ public class SimpleDhtProvider extends ContentProvider {
             }
 
             msgs.add(new Message(filename, value, assigned_node));
-            /*String path = getContext().getFilesDir().getAbsolutePath() + "/" + filename;
-            File f = new File(path);
-            //deleting if the record is already there, as mentioned in PA, not updating or storing the previous values.
-            if(f.exists()){
-                f.delete();
-            } */
+
             Log.e(P_TAG, "---- KEY "+ values.getAsString("key"));
             Log.e(P_TAG, "---- VALUE "+ values.getAsString("value"));
             Log.e(P_TAG, "---- ASSIGNED NODE:  "+ assigned_node);
 
-            /*FileOutputStream outputStream;
-            try {
-                outputStream = getContext().openFileOutput(filename, Context.MODE_PRIVATE);
-                outputStream.write(value.getBytes());
-                //not writing assigned node to the file right now
-
-                Log.e(P_TAG,"FILE CREATED = "+path);
-                outputStream.close();
-            } catch (Exception e) {
-                Log.e(P_TAG, "File write failed");
-                e.printStackTrace();
-            }*/
         }else{
-            //String msgToSend = "navo_msg" +","+ values.getAsString("key") + ","+ values.getAsString("value") + ","+myPort+","+node_id;
             String msgToSend = "navo_msg" +","+ values.getAsString("key") + ","+ values.getAsString("value");
             new ClientTask().executeOnExecutor(AsyncTask.SERIAL_EXECUTOR, msgToSend);
             return uri;
@@ -226,7 +195,6 @@ public class SimpleDhtProvider extends ContentProvider {
                     MatrixCursor m = new MatrixCursor(cols, 1);
                     while(itr.hasNext()){
                         Message m2 = itr.next();
-                        //Log.e(P_TAG, "m2 Key = " + m2.getKey() + " m2 msg = " + m2.getMessage() + "m2 assigned node = " + m2.getAssignedNode());
                         if(m2.getAssignedNode().equals(query_string[0])){
                             Log.e(P_TAG, "@ 1 - MSG KEY: " + m2.getKey() + " Message: " + m2.getMessage() + " found for node: " + query_string[0]);
                             String[] value = {m2.getKey(), m2.getMessage()};
@@ -269,14 +237,12 @@ public class SimpleDhtProvider extends ContentProvider {
                     MatrixCursor m = new MatrixCursor(cols, 1);
                     while(itr.hasNext()){
                         Message m2 = itr.next();
-                        //Log.e(P_TAG, "MSG KEY: " + m2.getKey() + " Message: " + m2.getMessage());
                         String[] value = {m2.getKey(), m2.getMessage()};
                         m.addRow(value);
                     }
                     return m;
 
                 }else if(selection.equals("@")){
-                        //Log.e(P_TAG, "CLIENT "+query_string[0]+ " - " +query_string[1]+ " CALLED @ QUERY PARAMETER");
                         itr = msgs.listIterator();
                         String[] cols = {"key","value"};
                         MatrixCursor m = new MatrixCursor(cols, 1);
@@ -294,8 +260,6 @@ public class SimpleDhtProvider extends ContentProvider {
                         }
                         return m;
                     }
-                    //Log.e(P_TAG, "SERVER's OWN MATRIX CURSOR: " + m.getString(m.getColumnIndex("key")) + " - " + m.getString(m.getColumnIndex("node")));
-                    //return m;
 
                 else{
                     //Log.e(P_TAG, "FILE WALA CODE ((((((((((((");
@@ -326,9 +290,7 @@ public class SimpleDhtProvider extends ContentProvider {
                 mat2 = as.get();
                 mat2.moveToFirst();
                 Log.e(P_TAG, "FINAL ANSWER COLUMN COUNT = " + mat2.getColumnCount() + " " + mat2.getString(0) );
-                /*int keyIndex = mat2.getColumnIndex(KEY_FIELD);
-                int valueIndex = mat2.getColumnIndex(VALUE_FIELD);
-                Log.e(P_TAG, "FINAL CLIENT @ VALUE: " + mat2.getString(keyIndex) + " "+ mat2.getString(valueIndex) + " " + as.toString()); */
+
                 return mat2;
             } catch (InterruptedException e) {
                 e.printStackTrace();
@@ -550,25 +512,6 @@ public class SimpleDhtProvider extends ContentProvider {
                                 out.println(response_msg);
                             }
 
-                            /*Uri.Builder uriBuilder = new Uri.Builder();
-                            uriBuilder.authority("edu.buffalo.cse.cse486586.simpledht.provider");
-                            uriBuilder.scheme("content");
-                            Uri uri = uriBuilder.build();
-                            String query_msg = target_node + "," + selection;
-                            Cursor resultCursor = query(uri, null, query_msg, null, null);
-                            Log.e(P_TAG, "))))))))))))))))) "+ resultCursor.getColumnNames());
-                            /*int keyIndex = resultCursor.getColumnIndex(KEY_FIELD);
-                            int valueIndex = resultCursor.getColumnIndex(VALUE_FIELD);
-                            if (keyIndex == -1 || valueIndex == -1) {
-                                Log.e(P_TAG, "Wrong columns");
-                                resultCursor.close();
-                                try {
-                                    throw new Exception();
-                                } catch (Exception e) {
-                                    e.printStackTrace();
-                                }
-                            } */
-
                             break;
 
                             //returning cursor to target_node
@@ -635,11 +578,7 @@ public class SimpleDhtProvider extends ContentProvider {
                     }
                     if(baap_alive == 0) {
                         myPort="11108";
-                        recently_changed=1;
                         Log.e(P_TAG, ">>>>>>>>>>>>>>>>>>>> SELF PROCLAIMED SERVER CHANGED <<<<<<<<<<<<<<<<<<<<<<<<<<<");
-                        //String msgReceived="";
-                        //publishProgress(msgReceived);
-                        //Thread.sleep(500);
                     }
 
 
@@ -677,8 +616,6 @@ public class SimpleDhtProvider extends ContentProvider {
                         if ("SERVER_AAI_GAYU".equals(temp)) {
                             Log.e(P_TAG, "CLIENT SUCCESSFULLY SENT MSG TO " + remotePorts.get(i) + " REMOTEPORT SIZE = " + remotePorts.size() + " sending msg " + c_msgs[0] + " loop iteration " + i);
                             break;
-                        }else{
-                            //query_response = query_response + temp;
                         }
                     }
                     //query_response = temp;
@@ -706,7 +643,6 @@ public class SimpleDhtProvider extends ContentProvider {
                 out.close();
                 in.close();
                 socket.close();
-                //Thread.sleep(500);
 
             } catch (SocketTimeoutException ste) {
 
@@ -773,8 +709,9 @@ public class SimpleDhtProvider extends ContentProvider {
                 f.delete();
                 return 0;
             }
+            return 0;
         }
-        return -1;
+        return 0;
     }
 
     @Override
